@@ -452,7 +452,7 @@ const PF={
   other:{lbl:'기타',rl:'평점(5점)',metrics:[{id:'rating',l:'평점(0~5)',min:0,max:5,st:.1,ph:'4.0'},{id:'views',l:'조회수',ph:''}],promos:[{g:'기타',opts:[{v:'e1',l:'무료연재'},{v:'e2',l:'유료연재'}]}]}
 };
 function getPM(){const m={};Object.values(PF).forEach(f=>f.promos.forEach(g=>g.opts.forEach(o=>{m[o.v]=o.l;})));return m;}
-let W=JSON.parse(localStorage.getItem('wna9_w')||'[]');
+const SB_URL='https://ytvhcwsbiralnbfmudbz.supabase.co';const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
 let KS=JSON.parse(localStorage.getItem('wna9_ks')||'{"female":{},"male":{},"work":{}}');
 let KR=JSON.parse(localStorage.getItem('wna9_kr')||'{"female":[],"male":[],"work":[]}');
 let SC=JSON.parse(localStorage.getItem('wna9_sc')||'[]');

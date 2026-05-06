@@ -529,7 +529,7 @@ async function recKwDB(t,arr){
 function selAnaStatus(v,el){if(anaStatus===v){anaStatus='';document.querySelectorAll('.ana-sb').forEach(b=>b.className='ana-sb');return;}anaStatus=v;document.querySelectorAll('.ana-sb').forEach(b=>b.className='ana-sb');if(el)el.classList.add('on-'+v);}
 function ageOverlayBadge(a){if(a==='19세')return`<div class="cv-age-badge">🔞 19세</div>`;if(a==='15세&19세')return`<div class="cv-age-badge">🔞 15&19세</div>`;return'';}
 function ipOverlayBadges(arr){if(!arr||!arr.length)return'';const icons={'드라마':'🎬','애니메이션':'🎌','웹툰':'🖼️','영화':'🎥'};return`<div class="cv-ip-badges">${arr.map(t=>`<span class="cv-ip-badge">${icons[t]||'🔗'} ${t}</span>`).join('')}</div>`;}
-
+function anaStatusBadge(st){if(!st||!ANA_CFG[st])return'';const c=ANA_CFG[st];return`<div class="cv-status-badge ${c.badge}">${c.emoji} ${c.lbl}</div>`;}
 function anaStatusBadge(st){if(!st||!ANA_CFG[st])return'';const c=ANA_CFG[st];return`<div class="cv-status-badge ${c.badge}">${c.emoji} ${c.lbl}</div>`;}if(!st||!ANA_CFG[st])return'<span style="color:var(--mu)">-</span>';const c=ANA_CFG[st];const colors={done:'#00b894',ing:'#6c5ce7',read:'#f59e0b','5ep':'#1f8ce6'};return`<span style="color:${colors[st]};font-weight:700;font-size:11px">${c.emoji} ${c.lbl}</span>`;}
 function togEbook(){ebookChecked=!ebookChecked;const cb=document.getElementById('f-ebook'),lbl=document.getElementById('ebook-lbl'),row=document.getElementById('ebook-row');if(cb)cb.checked=ebookChecked;if(lbl){lbl.textContent=ebookChecked?'단행본/Ebook 출간':'단행본/Ebook 출간 없음';lbl.style.color=ebookChecked?'var(--ac)':'var(--mu)';}if(row)row.classList.toggle('on',ebookChecked);}
 function updIPchip(cb){const l=cb.closest('.ip-chip');if(l)l.classList.toggle('on',cb.checked);}

@@ -77,7 +77,7 @@ h1{font-size:16px;font-weight:800;color:var(--ac);white-space:nowrap}h1 span{col
 .cvc{background:#fff;border:1px solid var(--bd);border-radius:14px;overflow:hidden;box-shadow:var(--sh);cursor:pointer;transition:transform .15s,box-shadow .15s;position:relative}.cvc:hover{transform:translateY(-3px);box-shadow:0 6px 20px rgba(0,0,0,.1)}
 .cva{position:absolute;top:6px;right:6px;z-index:10}
 .cv-status-badge{position:absolute;top:6px;left:6px;z-index:10;padding:3px 7px;border-radius:20px;font-size:10px;font-weight:700;box-shadow:0 1px 4px rgba(0,0,0,.18)}
-.csb-done{background:#00b894;color:#fff}.csb-ing{background:#6c5ce7;color:#fff}.csb-read{background:#f59e0b;color:#fff}.csb-5ep{background:#1f8ce6;color:#fff}
+.csb-done{background:#00b894;color:#fff}.csb-ing{background:#6c5ce7;color:#fff}.csb-read{background:#f59e0b;color:#fff}.csb-5ep{background:#1f8ce6;color:#fff}.csb-need{background:#e53935;color:#fff}
 .cvi{width:100%;aspect-ratio:3/4;background:var(--bg3);display:flex;align-items:center;justify-content:center;overflow:hidden}.cvi img{width:100%;height:100%;object-fit:cover}
 .cvni{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;color:var(--mu);font-size:11px;width:100%;height:100%;background:linear-gradient(135deg,#f0f1f7,#e4e6f0)}
 .cvif{padding:8px 10px 10px}.cvtl{font-size:12px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:2px}.cvau{font-size:11px;color:var(--mu);margin-bottom:4px}
@@ -150,7 +150,7 @@ mark{background:#ffe066;border-radius:3px;padding:0 2px}
 .ebook-row{display:flex;align-items:center;gap:8px;padding:7px 10px;background:#fff;border:1px solid var(--bd);border-radius:8px;cursor:pointer;user-select:none;transition:all .12s}.ebook-row input[type=checkbox]{accent-color:var(--ac);width:13px;height:13px;flex-shrink:0}.ebook-row.on{border-color:var(--ac);background:#ede9ff}
 .ana-status-wrap{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
 .ana-sb{display:flex;align-items:center;gap:5px;padding:6px 13px;border-radius:20px;border:2px solid var(--bd);background:#fff;font-size:12px;font-weight:700;cursor:pointer;user-select:none;transition:all .12s;color:var(--mu)}.ana-sb:hover{border-color:var(--ac)}
-.ana-sb.on-done{border-color:#00b894;background:#e0f7ef;color:#00b894}.ana-sb.on-ing{border-color:#6c5ce7;background:#ede9ff;color:#6c5ce7}.ana-sb.on-read{border-color:#f59e0b;background:#fef9ee;color:#b45309}.ana-sb.on-5ep{border-color:#1f8ce6;background:#e3f2fd;color:#1565c0}
+.ana-sb.on-done{border-color:#00b894;background:#e0f7ef;color:#00b894}.ana-sb.on-ing{border-color:#6c5ce7;background:#ede9ff;color:#6c5ce7}.ana-sb.on-read{border-color:#f59e0b;background:#fef9ee;color:#b45309}.ana-sb.on-need{border-color:#e53935;background:#fce8e8;color:#e53935}
 .stb-panel{background:#fff;border:1px solid var(--bd);border-radius:14px;padding:14px;margin-bottom:12px;box-shadow:var(--sh)}
 .stbrow{display:flex;align-items:center;gap:10px;margin-bottom:9px;flex-wrap:wrap}.stbrow:last-child{margin-bottom:0}
 .stblbl{font-size:11px;font-weight:700;color:var(--mu);white-space:nowrap;min-width:68px}
@@ -349,7 +349,7 @@ mark{background:#ffe066;border-radius:3px;padding:0 2px}
       </div>
     </div>
     <div class="fs"><div class="fst">분석 진행 상태</div>
-      <div class="ana-status-wrap"><div class="ana-sb" id="asb-done" onclick="selAnaStatus('done',this)">✅ 분석 완료</div><div class="ana-sb" id="asb-ing" onclick="selAnaStatus('ing',this)">🔍 분석 중</div><div class="ana-sb" id="asb-read" onclick="selAnaStatus('read',this)">📖 완독</div><div class="ana-sb" id="asb-5ep" onclick="selAnaStatus('5ep',this)">👀 5화 감상</div></div>
+      <div class="ana-status-wrap"><div class="ana-sb" id="asb-done" onclick="selAnaStatus('done',this)">✅ 분석 완료</div><div class="ana-sb" id="asb-ing" onclick="selAnaStatus('ing',this)">🔍 분석 중</div><div class="ana-sb" id="asb-read" onclick="selAnaStatus('read',this)">📖 완독</div><div class="ana-sb" id="asb-5ep" onclick="selAnaStatus('5ep',this)">👀 5화 감상</div><div class="ana-sb" id="asb-need" onclick="selAnaStatus('need',this)">📌 분석 필요</div></div>
     </div>
     <div class="fs"><div class="fst" id="mettl">플랫폼 수치</div><div id="metf"></div></div>
     <div class="fs"><div class="fst">프로모션</div><div class="prl" id="prl"></div><div class="spr" id="spr"></div></div>
@@ -420,7 +420,7 @@ const GPB={'판타지':'#ede9ff','로맨스':'#fde8f3','로맨스판타지':'#fc
 const PAL=['#6c5ce7','#e84393','#f59e0b','#00b894','#1f8ce6','#ff6b35','#c62828','#00bcd4','#827717','#ad1457','#1976d2','#ff4081'];
 const SL=['','매우낮음','낮음','보통','높음','매우높음'];
 const AGEBADGE={'전체이용가':['#e8f5e9','#2e7d32'],'12세':['#e3f2fd','#1565c0'],'15세':['#fff8e1','#f57f17'],'19세':['#fce4ec','#c62828'],'15세&19세':['#fce4ec','#ad1457']};
-const ANA_CFG={done:{lbl:'분석 완료',badge:'csb-done',emoji:'✅'},ing:{lbl:'분석 중',badge:'csb-ing',emoji:'🔍'},read:{lbl:'완독',badge:'csb-read',emoji:'📖'},'5ep':{lbl:'5화 감상',badge:'csb-5ep',emoji:'👀'}};
+const ANA_CFG={done:{lbl:'분석 완료',badge:'csb-done',emoji:'✅'},ing:{lbl:'분석 중',badge:'csb-ing',emoji:'🔍'},read:{lbl:'완독',badge:'csb-read',emoji:'📖'},'5ep':{lbl:'5화 감상',badge:'csb-5ep',emoji:'👀'},need:{lbl:'분석 필요',badge:'csb-need',emoji:'📌'}};
 const EL=[{id:'genre',l:'세부 장르'},{id:'genreParent',l:'장르 갈래'},{id:'platform',l:'플랫폼'},{id:'status',l:'연재 상태'},{id:'exclusive',l:'독점 여부'},{id:'commerciality',l:'상업성'},{id:'publisher',l:'출판사'},{id:'kw_all',l:'전체 키워드'},{id:'kw_female',l:'여주 키워드'},{id:'kw_male',l:'남주 키워드'},{id:'new_ratio',l:'신작/기존'}];
 const EY=[{id:'count',l:'작품 수'},{id:'rating',l:'평균 평점'},{id:'commerciality',l:'평균 상업성'}];
 const PF={

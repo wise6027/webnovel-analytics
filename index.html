@@ -641,21 +641,25 @@ function renderTable(data){const tb=document.getElementById('wtbody'),nd=documen
 /* ══ 표지 갤러리 ══ */
 function getCV(){
   if(srchOn)return srchRes;
-  let f=W.filter(w=>platFilt==='all'||w.platform===platFilt);
+  const base=W.filter(w=>platFilt==='all'||w.platform===platFilt);
   const asc=cvDir==='asc';
-  if(cvSort==='rating')f=[...f].sort((a,b)=>asc?a.rating-b.rating:b.rating-a.rating);
-  else if(cvSort==='comm')f=[...f].sort((a,b)=>asc?(a.commerciality||0)-(b.commerciality||0):(b.commerciality||0)-(a.commerciality||0));
-  else if(cvSort==='pub')f=[...f].sort((a,b)=>asc?(a.pubdate||'').localeCompare(b.pubdate||''):(b.pubdate||'').localeCompare(a.pubdate||''));
-  else if(cvSort==='ana-need')f=[...f].filter(w=>!w.anaStatus).concat([...f].filter(w=>w.anaStatus));
-  else if(cvSort==='ana-ing')f=[...f].filter(w=>w.anaStatus==='ing').concat([...f].filter(w=>w.anaStatus!=='ing'));
-  else if(cvSort==='ana-done')f=[...f].filter(w=>w.anaStatus==='done').concat([...f].filter(w=>w.anaStatus!=='done'));
-  else if(cvSort==='ana-read')f=[...f].filter(w=>w.anaStatus==='read').concat([...f].filter(w=>w.anaStatus!=='read'));
-  else if(cvSort==='ana-5ep')f=[...f].filter(w=>w.anaStatus==='5ep').concat([...f].filter(w=>w.anaStatus!=='5ep'));
-  else if(cvSort==='ip-drama')f=[...f].filter(w=>(w.ipTypes||[]).includes('드라마')).concat([...f].filter(w=>!(w.ipTypes||[]).includes('드라마')));
-  else if(cvSort==='ip-webtoon')f=[...f].filter(w=>(w.ipTypes||[]).includes('웹툰')).concat([...f].filter(w=>!(w.ipTypes||[]).includes('웹툰')));
-  else if(cvSort==='ip-movie')f=[...f].filter(w=>(w.ipTypes||[]).includes('영화')).concat([...f].filter(w=>!(w.ipTypes||[]).includes('영화')));
-  else if(cvSort==='ip-anime')f=[...f].filter(w=>(w.ipTypes||[]).includes('애니메이션')).concat([...f].filter(w=>!(w.ipTypes||[]).includes('애니메이션')));
-  else f=[...f].sort((a,b)=>asc?a.ts-b.ts:b.ts-a.ts);
+  // 분석 상태 필터 (앞으로 정렬)
+  if(cvSort==='ana-need'){const hit=base.filter(w=>!w.anaStatus||w.anaStatus==='');const rest=base.filter(w=>w.anaStatus&&w.anaStatus!=='');return[...hit,...rest];}
+  if(cvSort==='ana-ing'){const hit=base.filter(w=>w.anaStatus==='ing');const rest=base.filter(w=>w.anaStatus!=='ing');return[...hit,...rest];}
+  if(cvSort==='ana-done'){const hit=base.filter(w=>w.anaStatus==='done');const rest=base.filter(w=>w.anaStatus!=='done');return[...hit,...rest];}
+  if(cvSort==='ana-read'){const hit=base.filter(w=>w.anaStatus==='read');const rest=base.filter(w=>w.anaStatus!=='read');return[...hit,...rest];}
+  if(cvSort==='ana-5ep'){const hit=base.filter(w=>w.anaStatus==='5ep');const rest=base.filter(w=>w.anaStatus!=='5ep');return[...hit,...rest];}
+  // IP화 필터 (앞으로 정렬)
+  if(cvSort==='ip-drama'){const hit=base.filter(w=>(w.ipTypes||[]).includes('드라마'));const rest=base.filter(w=>!(w.ipTypes||[]).includes('드라마'));return[...hit,...rest];}
+  if(cvSort==='ip-webtoon'){const hit=base.filter(w=>(w.ipTypes||[]).includes('웹툰'));const rest=base.filter(w=>!(w.ipTypes||[]).includes('웹툰'));return[...hit,...rest];}
+  if(cvSort==='ip-movie'){const hit=base.filter(w=>(w.ipTypes||[]).includes('영화'));const rest=base.filter(w=>!(w.ipTypes||[]).includes('영화'));return[...hit,...rest];}
+  if(cvSort==='ip-anime'){const hit=base.filter(w=>(w.ipTypes||[]).includes('애니메이션'));const rest=base.filter(w=>!(w.ipTypes||[]).includes('애니메이션'));return[...hit,...rest];}
+  // 일반 정렬
+  let f=[...base];
+  if(cvSort==='rating')f.sort((a,b)=>asc?a.rating-b.rating:b.rating-a.rating);
+  else if(cvSort==='comm')f.sort((a,b)=>asc?(a.commerciality||0)-(b.commerciality||0):(b.commerciality||0)-(a.commerciality||0));
+  else if(cvSort==='pub')f.sort((a,b)=>asc?(a.pubdate||'').localeCompare(b.pubdate||''):(b.pubdate||'').localeCompare(a.pubdate||''));
+  else f.sort((a,b)=>asc?a.ts-b.ts:b.ts-a.ts);
   return f;
 }
 function renderCovers(){

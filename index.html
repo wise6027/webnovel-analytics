@@ -538,7 +538,14 @@ function filterPlat(p){platFilt=p;document.querySelectorAll('.pi').forEach(el=>e
 function toggleGenre(g){if(genreFilt.has(g))genreFilt.delete(g);else genreFilt.add(g);render();}
 
 /* ══ 정렬 ══ */
-function setSort(s){cvSort=s;document.querySelectorAll('.sortb').forEach(b=>b.classList.remove('on'));document.getElementById('s-'+s)?.classList.add('on');renderCovers();}
+function setSort(s){
+  cvSort=s;
+  document.querySelectorAll('.sortb').forEach(b=>b.classList.remove('on'));
+  document.getElementById('s-'+s)?.classList.add('on');
+  console.log('setSort called:', s, '→ cvSort=', cvSort);
+  console.log('getCV result count:', getCV().length);
+  renderCovers();
+}
 function setDir(d){cvDir=d;const desc=document.getElementById('dir-desc'),asc=document.getElementById('dir-asc');if(desc){desc.style.background=d==='desc'?'var(--ac)':'transparent';desc.style.color=d==='desc'?'#fff':'var(--mu)';}if(asc){asc.style.background=d==='asc'?'var(--ac)':'transparent';asc.style.color=d==='asc'?'#fff':'var(--mu)';}renderCovers();}
 
 function getFiltered(){return W.filter(w=>(platFilt==='all'||w.platform===platFilt)&&(genreFilt.size===0||genreFilt.has(w.genreSub||w.genre)));}

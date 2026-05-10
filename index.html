@@ -542,8 +542,10 @@ function setSort(s){
   cvSort=s;
   document.querySelectorAll('.sortb').forEach(b=>b.classList.remove('on'));
   document.getElementById('s-'+s)?.classList.add('on');
-  console.log('setSort called:', s, '→ cvSort=', cvSort);
-  console.log('getCV result count:', getCV().length);
+  const result=getCV();
+  console.log('setSort:', s, '| total:', result.length);
+  console.log('처음 5개 anaStatus:', result.slice(0,5).map(w=>w.anaStatus+'('+w.title+')'));
+  console.log('W 전체 anaStatus 분포:', W.reduce((acc,w)=>{const k=w.anaStatus||'(없음)';acc[k]=(acc[k]||0)+1;return acc;},{}));
   renderCovers();
 }
 function setDir(d){cvDir=d;const desc=document.getElementById('dir-desc'),asc=document.getElementById('dir-asc');if(desc){desc.style.background=d==='desc'?'var(--ac)':'transparent';desc.style.color=d==='desc'?'#fff':'var(--mu)';}if(asc){asc.style.background=d==='asc'?'var(--ac)':'transparent';asc.style.color=d==='asc'?'#fff':'var(--mu)';}renderCovers();}

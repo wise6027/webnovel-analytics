@@ -410,7 +410,17 @@ const SB_URL='https://ytvhcwsbiralnbfmudbz.supabase.co';
 const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl0dmhjd3NiaXJhbG5iZm11ZGJ6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc4Njg0MjAsImV4cCI6MjA5MzQ0NDQyMH0.ghTgf4vHY0cFGu0G76Dm_mdSlavw8yJo8RCs6bycT7Y';
 const SB_H={'Content-Type':'application/json','apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY};
 
-async function sbGet(table,order){const url=SB_URL+'/rest/v1/'+table+(order?'?order='+order:'');const r=await fetch(url,{headers:SB_H});if(!r.ok)throw new Error(await r.text());return r.json();}
+async function sbGet(table,order){
+  const url=SB_URL+'/rest/v1/'+table+(order?'?order='+order:'');
+  const controller=new AbortController();
+  const timer=setTimeout(()=>controller.abort(),15000);
+  try{
+    const r=await fetch(url,{headers:SB_H,signal:controller.signal});
+    clearTimeout(timer);
+    if(!r.ok)throw new Error(await r.text());
+    return r.json();
+  }catch(e){clearTimeout(timer);throw e;}
+}
 async function sbUpsert(table,data,onConflict){const r=await fetch(SB_URL+'/rest/v1/'+table,{method:'POST',headers:{...SB_H,'Prefer':'resolution=merge-duplicates,return=representation','on-conflict':onConflict||'id'},body:JSON.stringify(data)});if(!r.ok)throw new Error(await r.text());return r.json();}
 async function sbDelete(table,col,val){const r=await fetch(SB_URL+'/rest/v1/'+table+'?'+col+'=eq.'+val,{method:'DELETE',headers:SB_H});if(!r.ok)throw new Error(await r.text());}
 
@@ -481,14 +491,29 @@ async function loadAll(){
   dot.style.cssText='width:7px;height:7px;border-radius:50%;background:#f59e0b;flex-shrink:0;animation:pulse 1s infinite';
   txt.textContent='Supabase 연결 중...';
   try{
-    const[rows,ksRows,krRows,scRows]=await Promise.all([sbGet('works','ts.desc'),sbGet('keyword_stats'),sbGet('keyword_recent'),sbGet('saved_charts','id.desc')]);
+    // 순차 로드 (타임아웃 방지)
+    txt.textContent='작품 데이터 로드 중...';
+    const rows=await sbGet('works','ts.desc');
     W=rows.map(rowToWork);
-    KS={female:{},male:{},work:{}};ksRows.forEach(r=>{if(KS[r.type])KS[r.type][r.keyword]=r.count;});
-    KR={female:[],male:[],work:[]};krRows.forEach(r=>{if(KR[r.type]!==undefined)KR[r.type]=r.keywords||[];});
+
+    txt.textContent='키워드 데이터 로드 중...';
+    let ksRows=[],krRows=[],scRows=[];
+    try{ksRows=await sbGet('keyword_stats');}catch(e){console.warn('keyword_stats 로드 실패',e);}
+    try{krRows=await sbGet('keyword_recent');}catch(e){console.warn('keyword_recent 로드 실패',e);}
+    try{scRows=await sbGet('saved_charts','id.desc');}catch(e){console.warn('saved_charts 로드 실패',e);}
+
+    KS={female:{},male:{},work:{}};
+    ksRows.forEach(r=>{if(KS[r.type])KS[r.type][r.keyword]=r.count;});
+    KR={female:[],male:[],work:[]};
+    krRows.forEach(r=>{if(KR[r.type]!==undefined)KR[r.type]=r.keywords||[];});
     SC=scRows;
+
     setDB(true,'✅ Supabase 연결됨 · 작품 '+W.length+'편');
     render();
-  }catch(e){setDB(false,'❌ 연결 실패: '+e.message);console.error(e);}
+  }catch(e){
+    setDB(false,'❌ 연결 실패: '+e.message);
+    console.error(e);
+  }
 }
 
 /* ══ 키워드 DB 저장 ══ */

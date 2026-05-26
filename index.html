@@ -429,20 +429,44 @@ async function sbUpsert(table,data,onConflict){const r=await fetch(SB_URL+'/rest
 async function sbDelete(table,col,val){const r=await fetch(SB_URL+'/rest/v1/'+table+'?'+col+'=eq.'+val,{method:'DELETE',headers:SB_H});if(!r.ok)throw new Error(await r.text());}
 
 // Storage에 표지 업로드 후 URL 반환
+// 표지 이미지 별도 테이블에 저장/로드
+async function saveCover(workId,base64){
+  if(!base64)return;
+  try{
+    await sbUpsert('work_covers',{work_id:workId,cover_base64:base64,updated_at:new Date().toISOString()},'work_id');
+  }catch(e){console.warn('표지 저장 실패',e);}
+}
+async function loadCover(workId){
+  try{
+    const r=await fetch(SB_URL+'/rest/v1/work_covers?work_id=eq.'+workId+'&select=cover_base64',{headers:SB_H});
+    if(!r.ok)return'';
+    const data=await r.json();
+    return data[0]?.cover_base64||'';
+  }catch(e){return'';}
+}
+async function loadAllCovers(ids){
+  if(!ids.length)return{};
+  try{
+    const r=await fetch(SB_URL+'/rest/v1/work_covers?work_id=in.('+ids.join(',')+')'+'&select=work_id,cover_base64',{headers:SB_H});
+    if(!r.ok)return{};
+    const data=await r.json();
+    const map={};data.forEach(d=>{map[d.work_id]=d.cover_base64;});
+    return map;
+  }catch(e){return{};}
+}
+
+// Storage 업로드 함수 제거 후 base64 방식으로 대체
 async function uploadCover(file,workId){
-  const ext=file.name.split('.').pop().toLowerCase()||'jpg';
-  const path=workId+'.'+ext;
-  // 업로드
-  const r=await fetch(SB_URL+'/storage/v1/object/covers/'+path,{
-    method:'POST',
-    headers:{...SB_H,'Content-Type':file.type||'image/jpeg','x-upsert':'true'},
-    body:file
+  return new Promise((resolve,reject)=>{
+    const r=new FileReader();
+    r.onload=async e=>{
+      const b64=e.target.result;
+      await saveCover(workId,b64);
+      resolve(b64);
+    };
+    r.onerror=reject;
+    r.readAsDataURL(file);
   });
-  if(!r.ok){const err=await r.text();console.error('업로드 실패:',err);throw new Error(err);}
-  // Public URL 조합
-  const publicUrl=SB_URL+'/storage/v1/object/public/covers/'+path;
-  console.log('업로드 성공, URL:', publicUrl);
-  return publicUrl;
 }
 
 function workToRow(w){return{id:w.id,title:w.title,author:w.author,publisher:w.publisher||'',platform:w.platform,genre_parent:w.genreParent||'',genre_sub:w.genreSub||'',genre:w.genre||'',status:w.status,exclusive:w.exclusive||'비독점',age_rating:w.ageRating||'전체이용가',pubdate:w.pubdate||null,enddate:w.enddate||null,total_ep:w.totalEp||0,promos:w.promos||[],promo_details:w.promoDetails||{},rating:w.rating||0,metrics:w.metrics||{},kw_female:w.kwFemale||[],kw_male:w.kwMale||[],kw_work:w.kwWork||[],keywords:w.keywords||[],memo_pros:w.memoPros||'',memo_cons:w.memoCons||'',memo_comm:w.memoComm||'',commerciality:w.commerciality||0,is_new:!!w.isNew,has_cover:!!w.hasCover,has_ebook:!!w.hasEbook,ip_types:w.ipTypes||[],ana_status:w.anaStatus||'',cover_url:w.coverUrl||'',date:w.date||'',ts:w.ts||w.id};}
@@ -512,10 +536,15 @@ async function loadAll(){
   dot.style.cssText='width:7px;height:7px;border-radius:50%;background:#f59e0b;flex-shrink:0;animation:pulse 1s infinite';
   txt.textContent='Supabase 연결 중...';
   try{
-    // 순차 로드 (타임아웃 방지)
     txt.textContent='작품 데이터 로드 중...';
     const rows=await sbGet('works','ts.desc');
     W=rows.map(rowToWork);
+
+    // 표지 이미지 별도 로드 (work_covers 테이블)
+    txt.textContent='표지 이미지 로드 중...';
+    const ids=W.map(w=>w.id);
+    const coverMap=await loadAllCovers(ids);
+    W.forEach(w=>{w.coverBase64=coverMap[w.id]||'';});
 
     txt.textContent='키워드 데이터 로드 중...';
     let ksRows=[],krRows=[],scRows=[];
@@ -659,21 +688,23 @@ async function saveWork(){
   if(!title||!author||!gp||!gs){alert('작품명, 작가명, 장르는 필수입니다.');return;}
   const status=gV('f-status'),fmt=PF[sPlatF],metrics={};fmt.metrics.forEach(m=>{metrics[m.id]=getMV(m.id);});
   const ipTypes=getIPvals();
-  const d={title,author,publisher:(gV('f-pub')||'').trim(),platform:sPlatF,genreParent:gp,genreSub:gs,genre:gs,status,exclusive:gV('f-excl'),ageRating:gV('f-age')||'전체이용가',pubdate:status==='완결'?gV('f-pd2'):gV('f-pd'),enddate:status==='완결'?gV('f-ed'):'',totalEp:status==='완결'?parseInt(gV('f-ep'))||0:0,promos:[...sPromos],promoDetails:{...promoDetails},rating:metrics.rating||0,metrics,kwFemale:[...kwF],kwMale:[...kwM],kwWork:[...kwW],keywords:[...kwF,...kwM,...kwW],memoPros:gV('f-mp').trim(),memoCons:gV('f-mc').trim(),memoComm:gV('f-mcomm').trim(),commerciality:stars,isNew:gV('f-isnew')==='신작',hasCover:!!cvB64,hasEbook:ebookChecked,ipTypes,anaStatus,coverUrl:eid_?W.find(x=>x.id===eid_)?.coverUrl||'':''};
+  const d={title,author,publisher:(gV('f-pub')||'').trim(),platform:sPlatF,genreParent:gp,genreSub:gs,genre:gs,status,exclusive:gV('f-excl'),ageRating:gV('f-age')||'전체이용가',pubdate:status==='완결'?gV('f-pd2'):gV('f-pd'),enddate:status==='완결'?gV('f-ed'):'',totalEp:status==='완결'?parseInt(gV('f-ep'))||0:0,promos:[...sPromos],promoDetails:{...promoDetails},rating:metrics.rating||0,metrics,kwFemale:[...kwF],kwMale:[...kwM],kwWork:[...kwW],keywords:[...kwF,...kwM,...kwW],memoPros:gV('f-mp').trim(),memoCons:gV('f-mc').trim(),memoComm:gV('f-mcomm').trim(),commerciality:stars,isNew:gV('f-isnew')==='신작',hasCover:!!cvB64,hasEbook:ebookChecked,ipTypes,anaStatus,coverUrl:''};
   showLoad(eid_?'수정 저장 중...':'Supabase에 저장 중...');
   try{
     const id=eid_||Date.now();
     if(!eid_){d.id=id;d.ts=id;d.date=new Date().toLocaleDateString('ko-KR');}
     else{d.id=eid_;d.ts=eid_;d.date=W.find(x=>x.id===eid_)?.date||new Date().toLocaleDateString('ko-KR');}
-    // 표지 이미지 업로드 (새 파일 선택한 경우만)
+    await sbUpsert('works',workToRow(d),'id');
+    // 표지 이미지: 새 파일 선택한 경우 work_covers에 저장
     const fileInput=document.getElementById('f-cv');
     if(fileInput&&fileInput.files&&fileInput.files[0]){
-      try{
-        d.coverUrl=await uploadCover(fileInput.files[0],d.id);
-        d.hasCover=true;
-      }catch(e){console.warn('표지 업로드 실패',e);}
+      showLoad('표지 이미지 저장 중...');
+      const b64=await uploadCover(fileInput.files[0],d.id);
+      d.coverBase64=b64;
+      d.hasCover=true;
+    } else if(cvB64){
+      d.coverBase64=cvB64;
     }
-    await sbUpsert('works',workToRow(d),'id');
     if(eid_){const i=W.findIndex(x=>x.id===eid_);if(i>=0)W[i]={...W[i],...d};}
     else W.unshift(d);
     await Promise.all([recKwDB('f',kwF),recKwDB('m',kwM),recKwDB('w',kwW)]);
@@ -732,7 +763,7 @@ function renderCovers(){
   const grid=document.getElementById('cvgrid');if(!grid)return;
   if(!f.length){grid.innerHTML=`<div class="empty"><div style="font-size:42px">${srchOn?'🔍':'📚'}</div><div style="margin-top:10px">${srchOn?'검색 결과가 없습니다.':'등록된 작품이 없습니다.'}</div></div>`;return;}
   grid.innerHTML=f.map(w=>{
-    const cv=w.coverUrl||'';
+    const cv=w.coverBase64||'';
     const img=cv?`<img src="${cv}" alt="${w.title}">`:`<div class="cvni"><div style="font-size:28px">📖</div><div>${w.genreSub||w.genre||''}</div></div>`;
     const stStr='★'.repeat(w.commerciality||0);
     const ttl=srchOn?hl(w.title,q):w.title;
@@ -754,7 +785,7 @@ function renderCovers(){
   }).join('');
 }
 
-function openDet(id){const w=W.find(x=>x.id===id);if(!w)return;closeMenus();const cv=w.coverUrl||'';const img=cv?`<img class="dcv" src="${cv}">`:`<div class="dph">📖</div>`;const kwH=[];if(w.kwFemale?.length)kwH.push(`<div style="font-size:11px;color:#e84393;margin-bottom:2px">👩 ${w.kwFemale.join(', ')}</div>`);if(w.kwMale?.length)kwH.push(`<div style="font-size:11px;color:#1565c0;margin-bottom:2px">👨 ${w.kwMale.join(', ')}</div>`);if(w.kwWork?.length)kwH.push(`<div style="font-size:11px;color:#00796b">📖 ${w.kwWork.join(', ')}</div>`);const promosH=(w.promos||[]).length?w.promos.map(p=>`<span class="ptg" style="font-size:10px">${fmtPromoTag(w,p)}</span>`).join(''):`<span style="color:var(--mu)">없음</span>`;const stStr='★'.repeat(w.commerciality||0)+'☆'.repeat(5-(w.commerciality||0));const ipStr=(w.ipTypes||[]).length?w.ipTypes.map(t=>`<span class="bdg" style="background:#ede9ff;color:var(--ac)">${t}</span>`).join(' '):'<span style="color:var(--mu)">없음</span>';const anaBadge=w.anaStatus&&ANA_CFG[w.anaStatus]?`<span style="color:${{need:'#e53935',done:'#00b894',ing:'#6c5ce7',read:'#f59e0b','5ep':'#1f8ce6'}[w.anaStatus]};font-weight:700">${ANA_CFG[w.anaStatus].emoji} ${ANA_CFG[w.anaStatus].lbl}</span>`:'<span style="color:var(--mu)">미분류</span>';const di=document.getElementById('detin');if(!di)return;di.innerHTML=`<h2 style="margin-bottom:9px">작품 상세</h2><div class="dr">${img}<div class="det-info-grid"><div class="kv"><span class="k">작품명</span><span style="font-weight:800">${w.title}</span></div><div class="kv"><span class="k">작가</span><span>${w.author}</span></div><div class="kv"><span class="k">출판사</span><span>${w.publisher||'-'}</span></div><div class="kv"><span class="k">플랫폼</span><span style="color:${PC[w.platform]};font-weight:700">${PN[w.platform]||w.platform}</span></div><div class="kv"><span class="k">갈래</span><span style="color:${GPC[w.genreParent]||'#888'};font-weight:700">${w.genreParent||'-'}</span></div><div class="kv"><span class="k">세부장르</span><span class="bdg" style="background:${gb(w.genreSub||w.genre)};color:${gc(w.genreSub||w.genre)}">${w.genreSub||w.genre||'-'}</span></div><div class="kv"><span class="k">상태</span><span>${w.status}${w.totalEp?` · ${w.totalEp}화 완결`:''}${w.enddate?` (${w.enddate})`:''}</span></div><div class="kv"><span class="k">이용가</span>${ageBdg(w.ageRating)}</div><div class="kv"><span class="k">독점</span><span>${w.exclusive||'-'}</span></div><div class="kv"><span class="k">단행본</span><span>${w.hasEbook?'<span style="color:#2e7d32;font-weight:700">있음</span>':'없음'}</span></div><div class="kv"><span class="k">IP화</span><span>${ipStr}</span></div><div class="kv"><span class="k">분석상태</span>${anaBadge}</div><div class="kv"><span class="k">평점</span><span style="color:#f59e0b;font-weight:700">${w.rating||'-'}</span></div><div class="kv"><span class="k">상업성</span><span style="color:#f59e0b;letter-spacing:-1px">${stStr}</span></div><div class="kv"><span class="k">출간일</span><span>${w.pubdate||'-'}</span></div></div></div>${kwH.length?`<div class="dm" style="margin-bottom:6px"><strong style="font-size:11px;color:var(--mu)">키워드</strong><div style="margin-top:4px">${kwH.join('')}</div></div>`:''}<div style="margin-bottom:6px"><strong style="font-size:11px;color:var(--mu)">프로모션</strong><div style="margin-top:4px;display:flex;flex-wrap:wrap;gap:4px">${promosH}</div></div>${w.memoPros?`<div class="dm" style="margin-bottom:5px"><strong style="font-size:11px;color:var(--ac3)">✅ 장점</strong><div style="margin-top:3px;white-space:pre-wrap">${w.memoPros}</div></div>`:''}${w.memoCons?`<div class="dm" style="margin-bottom:5px"><strong style="font-size:11px;color:#f59e0b">🔧 개선점</strong><div style="margin-top:3px;white-space:pre-wrap">${w.memoCons}</div></div>`:''}${w.memoComm?`<div class="dm"><strong style="font-size:11px;color:var(--ac)">💰 상업성</strong><div style="margin-top:3px;white-space:pre-wrap">${w.memoComm}</div></div>`:''}<div style="display:flex;gap:7px;justify-content:flex-end;margin-top:11px"><button class="bcl" onclick="document.getElementById('det-m').classList.remove('on')">닫기</button><button class="bsv" onclick="document.getElementById('det-m').classList.remove('on');openModal(${w.id})">✏️ 수정</button></div>`;document.getElementById('det-m').classList.add('on');}
+function openDet(id){const w=W.find(x=>x.id===id);if(!w)return;closeMenus();const cv=w.coverBase64||'';const img=cv?`<img class="dcv" src="${cv}">`:`<div class="dph">📖</div>`;const kwH=[];if(w.kwFemale?.length)kwH.push(`<div style="font-size:11px;color:#e84393;margin-bottom:2px">👩 ${w.kwFemale.join(', ')}</div>`);if(w.kwMale?.length)kwH.push(`<div style="font-size:11px;color:#1565c0;margin-bottom:2px">👨 ${w.kwMale.join(', ')}</div>`);if(w.kwWork?.length)kwH.push(`<div style="font-size:11px;color:#00796b">📖 ${w.kwWork.join(', ')}</div>`);const promosH=(w.promos||[]).length?w.promos.map(p=>`<span class="ptg" style="font-size:10px">${fmtPromoTag(w,p)}</span>`).join(''):`<span style="color:var(--mu)">없음</span>`;const stStr='★'.repeat(w.commerciality||0)+'☆'.repeat(5-(w.commerciality||0));const ipStr=(w.ipTypes||[]).length?w.ipTypes.map(t=>`<span class="bdg" style="background:#ede9ff;color:var(--ac)">${t}</span>`).join(' '):'<span style="color:var(--mu)">없음</span>';const anaBadge=w.anaStatus&&ANA_CFG[w.anaStatus]?`<span style="color:${{need:'#e53935',done:'#00b894',ing:'#6c5ce7',read:'#f59e0b','5ep':'#1f8ce6'}[w.anaStatus]};font-weight:700">${ANA_CFG[w.anaStatus].emoji} ${ANA_CFG[w.anaStatus].lbl}</span>`:'<span style="color:var(--mu)">미분류</span>';const di=document.getElementById('detin');if(!di)return;di.innerHTML=`<h2 style="margin-bottom:9px">작품 상세</h2><div class="dr">${img}<div class="det-info-grid"><div class="kv"><span class="k">작품명</span><span style="font-weight:800">${w.title}</span></div><div class="kv"><span class="k">작가</span><span>${w.author}</span></div><div class="kv"><span class="k">출판사</span><span>${w.publisher||'-'}</span></div><div class="kv"><span class="k">플랫폼</span><span style="color:${PC[w.platform]};font-weight:700">${PN[w.platform]||w.platform}</span></div><div class="kv"><span class="k">갈래</span><span style="color:${GPC[w.genreParent]||'#888'};font-weight:700">${w.genreParent||'-'}</span></div><div class="kv"><span class="k">세부장르</span><span class="bdg" style="background:${gb(w.genreSub||w.genre)};color:${gc(w.genreSub||w.genre)}">${w.genreSub||w.genre||'-'}</span></div><div class="kv"><span class="k">상태</span><span>${w.status}${w.totalEp?` · ${w.totalEp}화 완결`:''}${w.enddate?` (${w.enddate})`:''}</span></div><div class="kv"><span class="k">이용가</span>${ageBdg(w.ageRating)}</div><div class="kv"><span class="k">독점</span><span>${w.exclusive||'-'}</span></div><div class="kv"><span class="k">단행본</span><span>${w.hasEbook?'<span style="color:#2e7d32;font-weight:700">있음</span>':'없음'}</span></div><div class="kv"><span class="k">IP화</span><span>${ipStr}</span></div><div class="kv"><span class="k">분석상태</span>${anaBadge}</div><div class="kv"><span class="k">평점</span><span style="color:#f59e0b;font-weight:700">${w.rating||'-'}</span></div><div class="kv"><span class="k">상업성</span><span style="color:#f59e0b;letter-spacing:-1px">${stStr}</span></div><div class="kv"><span class="k">출간일</span><span>${w.pubdate||'-'}</span></div></div></div>${kwH.length?`<div class="dm" style="margin-bottom:6px"><strong style="font-size:11px;color:var(--mu)">키워드</strong><div style="margin-top:4px">${kwH.join('')}</div></div>`:''}<div style="margin-bottom:6px"><strong style="font-size:11px;color:var(--mu)">프로모션</strong><div style="margin-top:4px;display:flex;flex-wrap:wrap;gap:4px">${promosH}</div></div>${w.memoPros?`<div class="dm" style="margin-bottom:5px"><strong style="font-size:11px;color:var(--ac3)">✅ 장점</strong><div style="margin-top:3px;white-space:pre-wrap">${w.memoPros}</div></div>`:''}${w.memoCons?`<div class="dm" style="margin-bottom:5px"><strong style="font-size:11px;color:#f59e0b">🔧 개선점</strong><div style="margin-top:3px;white-space:pre-wrap">${w.memoCons}</div></div>`:''}${w.memoComm?`<div class="dm"><strong style="font-size:11px;color:var(--ac)">💰 상업성</strong><div style="margin-top:3px;white-space:pre-wrap">${w.memoComm}</div></div>`:''}<div style="display:flex;gap:7px;justify-content:flex-end;margin-top:11px"><button class="bcl" onclick="document.getElementById('det-m').classList.remove('on')">닫기</button><button class="bsv" onclick="document.getElementById('det-m').classList.remove('on');openModal(${w.id})">✏️ 수정</button></div>`;document.getElementById('det-m').classList.add('on');}
 
 function buildRngBtns(){const el=document.getElementById('rngbtns');if(!el)return;const all=[{id:'all',l:'전체'},...Object.keys(PN).map(p=>({id:p,l:PN[p]}))];el.innerHTML=all.map(r=>`<div class="rngb${spRange===r.id?' on':''}" onclick="setSpRange('${r.id}',this)">${r.l}</div>`).join('');}
 function buildAxChips(){const isPie=['pie','doughnut','radar'].includes(spType);const xl=document.getElementById('ax-x-lbl');if(xl)xl.textContent=isPie?'🍕 분할 기준':'📌 X축';const xc=document.getElementById('ax-x-chips');if(xc)xc.innerHTML=EL.map(e=>`<div class="elc${spX===e.id?' '+(isPie?'ap':'ax'):''}" onclick="setSpX('${e.id}',this)">${e.l}</div>`).join('');const yr=document.getElementById('ax-y-row');if(yr)yr.style.display=isPie?'none':'flex';const yc=document.getElementById('ax-y-chips');if(yc)yc.innerHTML=EY.map(e=>`<div class="elc${spY===e.id?' ay':''}" onclick="setSpY('${e.id}',this)">${e.l}</div>`).join('');}

@@ -704,17 +704,20 @@ function getCV(){
   if(srchOn)return srchRes;
   const base=W.filter(w=>platFilt==='all'||w.platform===platFilt);
   const asc=cvDir==='asc';
-  const anaSort=(v)=>[...base.filter(w=>w.anaStatus===v),...base.filter(w=>w.anaStatus!==v)];
-  const ipSort=(v)=>[...base.filter(w=>(w.ipTypes||[]).includes(v)),...base.filter(w=>!(w.ipTypes||[]).includes(v))];
-  if(cvSort==='ana-need')return anaSort('need');
-  if(cvSort==='ana-ing')return anaSort('ing');
-  if(cvSort==='ana-done')return anaSort('done');
-  if(cvSort==='ana-read')return anaSort('read');
-  if(cvSort==='ana-5ep')return anaSort('5ep');
-  if(cvSort==='ip-drama')return ipSort('드라마');
-  if(cvSort==='ip-webtoon')return ipSort('웹툰');
-  if(cvSort==='ip-movie')return ipSort('영화');
-  if(cvSort==='ip-anime')return ipSort('애니메이션');
+  // 분석/IP 정렬: 해당 값인 것 먼저, 나머지 뒤로
+  const anaMatch=(w,v)=>w.anaStatus===v;
+  const noAna=(w)=>!w.anaStatus||w.anaStatus==='';
+  if(cvSort==='ana-need'){return[...base.filter(noAna),...base.filter(w=>!noAna(w))];}
+  if(cvSort==='ana-ing'){return[...base.filter(w=>anaMatch(w,'ing')),...base.filter(w=>!anaMatch(w,'ing'))];}
+  if(cvSort==='ana-done'){return[...base.filter(w=>anaMatch(w,'done')),...base.filter(w=>!anaMatch(w,'done'))];}
+  if(cvSort==='ana-read'){return[...base.filter(w=>anaMatch(w,'read')),...base.filter(w=>!anaMatch(w,'read'))];}
+  if(cvSort==='ana-5ep'){return[...base.filter(w=>anaMatch(w,'5ep')),...base.filter(w=>!anaMatch(w,'5ep'))];}
+  if(cvSort==='ana-need'){return[...base.filter(w=>anaMatch(w,'need')),...base.filter(w=>!anaMatch(w,'need'))];}
+  if(cvSort==='ip-drama'){return[...base.filter(w=>(w.ipTypes||[]).includes('드라마')),...base.filter(w=>!(w.ipTypes||[]).includes('드라마'))];}
+  if(cvSort==='ip-webtoon'){return[...base.filter(w=>(w.ipTypes||[]).includes('웹툰')),...base.filter(w=>!(w.ipTypes||[]).includes('웹툰'))];}
+  if(cvSort==='ip-movie'){return[...base.filter(w=>(w.ipTypes||[]).includes('영화')),...base.filter(w=>!(w.ipTypes||[]).includes('영화'))];}
+  if(cvSort==='ip-anime'){return[...base.filter(w=>(w.ipTypes||[]).includes('애니메이션')),...base.filter(w=>!(w.ipTypes||[]).includes('애니메이션'))];}
+  // 일반 정렬
   let f=[...base];
   if(cvSort==='rating')f.sort((a,b)=>asc?a.rating-b.rating:b.rating-a.rating);
   else if(cvSort==='comm')f.sort((a,b)=>asc?(a.commerciality||0)-(b.commerciality||0):(b.commerciality||0)-(a.commerciality||0));

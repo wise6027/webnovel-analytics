@@ -742,7 +742,11 @@ function getCV(){
   const base=W.filter(w=>platFilt==='all'||w.platform===platFilt);
   const asc=cvDir==='asc';
   const anaSort=(v)=>[...base.filter(w=>w.anaStatus===v),...base.filter(w=>w.anaStatus!==v)];
-  const ipSort=(v)=>[...base.filter(w=>(w.ipTypes||[]).includes(v)),...base.filter(w=>!(w.ipTypes||[]).includes(v))];
+  const ipSort=(v)=>{
+    const hit=[...base.filter(w=>(w.ipTypes||[]).includes(v))].sort((a,b)=>(b.pubdate||'').localeCompare(a.pubdate||''));
+    const rest=[...base.filter(w=>!(w.ipTypes||[]).includes(v))].sort((a,b)=>b.ts-a.ts);
+    return[...hit,...rest];
+  };
   if(cvSort==='ana-need')return anaSort('need');
   if(cvSort==='ana-ing')return anaSort('ing');
   if(cvSort==='ana-done')return anaSort('done');
@@ -752,7 +756,7 @@ function getCV(){
   if(cvSort==='ip-webtoon')return ipSort('웹툰');
   if(cvSort==='ip-movie')return ipSort('영화');
   if(cvSort==='ip-anime')return ipSort('애니메이션');
-  if(cvSort==='ebook')return[...base.filter(w=>w.hasEbook),...base.filter(w=>!w.hasEbook)];
+  if(cvSort==='ebook')return[...base.filter(w=>w.hasEbook).sort((a,b)=>(b.pubdate||'').localeCompare(a.pubdate||'')),...base.filter(w=>!w.hasEbook).sort((a,b)=>b.ts-a.ts)];
   let f=[...base];
   if(cvSort==='rating')f.sort((a,b)=>asc?a.rating-b.rating:b.rating-a.rating);
   else if(cvSort==='comm')f.sort((a,b)=>asc?(a.commerciality||0)-(b.commerciality||0):(b.commerciality||0)-(a.commerciality||0));

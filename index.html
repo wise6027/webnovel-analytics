@@ -287,6 +287,8 @@ mark{background:#ffe066;border-radius:3px;padding:0 2px}
       <button class="sortb" id="s-ip-webtoon" onclick="setSort('ip-webtoon')">🖼️ 웹툰</button>
       <button class="sortb" id="s-ip-movie" onclick="setSort('ip-movie')">🎥 영화</button>
       <button class="sortb" id="s-ip-anime" onclick="setSort('ip-anime')">🎌 애니메이션</button>
+      <span style="width:1px;background:var(--bd);height:18px;display:inline-block;margin:0 2px"></span>
+      <button class="sortb" id="s-ebook" onclick="setSort('ebook')">📚 단행본</button>
     </div>
   </div>
   <div class="cvg" id="cvgrid"></div>
@@ -673,7 +675,7 @@ function openModal(id){
     kwF=[...(w.kwFemale||[])];kwM=[...(w.kwMale||[])];kwW=[...(w.kwWork||[])];
     setV('f-mp',w.memoPros||'');setV('f-mc',w.memoCons||'');setV('f-mcomm',w.memoComm||'');
     stars=w.commerciality||0;for(let i=1;i<=5;i++)document.getElementById('s'+i)?.classList.toggle('on',i<=stars);
-    cvB64='';if(w.coverUrl){const p=document.getElementById('f-cvp');if(p){p.src=w.coverUrl;p.style.display='block';}}
+    cvB64='';if(w.coverBase64){const p=document.getElementById('f-cvp');if(p){p.src=w.coverBase64;p.style.display='block';}}
     renderPrl();renderSpr();buildKw();setTimeout(()=>setGenre(w.genreParent||'',w.genreSub||w.genre||''),70);
   }else{document.getElementById('fbody').style.display='none';document.querySelectorAll('.pbt').forEach(b=>b.classList.remove('on'));}
   document.getElementById('modal').classList.add('on');
@@ -750,6 +752,7 @@ function getCV(){
   if(cvSort==='ip-webtoon')return ipSort('웹툰');
   if(cvSort==='ip-movie')return ipSort('영화');
   if(cvSort==='ip-anime')return ipSort('애니메이션');
+  if(cvSort==='ebook')return[...base.filter(w=>w.hasEbook),...base.filter(w=>!w.hasEbook)];
   let f=[...base];
   if(cvSort==='rating')f.sort((a,b)=>asc?a.rating-b.rating:b.rating-a.rating);
   else if(cvSort==='comm')f.sort((a,b)=>asc?(a.commerciality||0)-(b.commerciality||0):(b.commerciality||0)-(a.commerciality||0));

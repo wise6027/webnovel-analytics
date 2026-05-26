@@ -538,30 +538,30 @@ async function loadAll(){
   dot.style.cssText='width:7px;height:7px;border-radius:50%;background:#f59e0b;flex-shrink:0;animation:pulse 1s infinite';
   txt.textContent='Supabase 연결 중...';
   try{
-    txt.textContent='작품 데이터 로드 중...';
+    // 1. 작품 데이터 먼저 빠르게 로드 후 바로 렌더
     const rows=await sbGet('works','ts.desc');
     W=rows.map(rowToWork);
+    let ksRows=[],krRows=[],scRows=[];
+    try{ksRows=await sbGet('keyword_stats');}catch(e){}
+    try{krRows=await sbGet('keyword_recent');}catch(e){}
+    try{scRows=await sbGet('saved_charts','id.desc');}catch(e){}
+    KS={female:{},male:{},work:{}};ksRows.forEach(r=>{if(KS[r.type])KS[r.type][r.keyword]=r.count;});
+    KR={female:[],male:[],work:[]};krRows.forEach(r=>{if(KR[r.type]!==undefined)KR[r.type]=r.keywords||[];});
+    SC=scRows;
+    setDB(true,'✅ Supabase 연결됨 · 작품 '+W.length+'편');
+    render(); // 이미지 없이 먼저 화면 표시
 
-    // 표지 이미지 별도 로드 (work_covers 테이블)
-    txt.textContent='표지 이미지 로드 중...';
+    // 2. 이미지는 백그라운드에서 조용히 로드
+    txt.textContent='✅ Supabase 연결됨 · 작품 '+W.length+'편 (표지 로드 중...)';
     const ids=W.map(w=>w.id);
     const coverMap=await loadAllCovers(ids);
-    W.forEach(w=>{w.coverBase64=coverMap[w.id]||'';});
-
-    txt.textContent='키워드 데이터 로드 중...';
-    let ksRows=[],krRows=[],scRows=[];
-    try{ksRows=await sbGet('keyword_stats');}catch(e){console.warn('keyword_stats 로드 실패',e);}
-    try{krRows=await sbGet('keyword_recent');}catch(e){console.warn('keyword_recent 로드 실패',e);}
-    try{scRows=await sbGet('saved_charts','id.desc');}catch(e){console.warn('saved_charts 로드 실패',e);}
-
-    KS={female:{},male:{},work:{}};
-    ksRows.forEach(r=>{if(KS[r.type])KS[r.type][r.keyword]=r.count;});
-    KR={female:[],male:[],work:[]};
-    krRows.forEach(r=>{if(KR[r.type]!==undefined)KR[r.type]=r.keywords||[];});
-    SC=scRows;
-
-    setDB(true,'✅ Supabase 연결됨 · 작품 '+W.length+'편');
-    render();
+    let updated=false;
+    W.forEach(w=>{if(coverMap[w.id]){w.coverBase64=coverMap[w.id];updated=true;}});
+    if(updated){
+      setDB(true,'✅ Supabase 연결됨 · 작품 '+W.length+'편');
+      if(curPage==='cov')renderCovers();
+      else render();
+    }
   }catch(e){
     setDB(false,'❌ 연결 실패: '+e.message);
     console.error(e);

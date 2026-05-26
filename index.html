@@ -484,6 +484,17 @@ const PAL=['#6c5ce7','#e84393','#f59e0b','#00b894','#1f8ce6','#ff6b35','#c62828'
 const SL=['','매우낮음','낮음','보통','높음','매우높음'];
 const AGEBADGE={'전체이용가':['#e8f5e9','#2e7d32'],'12세':['#e3f2fd','#1565c0'],'15세':['#fff8e1','#f57f17'],'19세':['#fce4ec','#c62828'],'15세&19세':['#fce4ec','#ad1457']};
 const ANA_CFG={need:{lbl:'분석 필요',badge:'csb-need',emoji:'🔔'},done:{lbl:'분석 완료',badge:'csb-done',emoji:'✅'},ing:{lbl:'분석 중',badge:'csb-ing',emoji:'🔍'},read:{lbl:'완독',badge:'csb-read',emoji:'📖'},'5ep':{lbl:'5화 감상',badge:'csb-5ep',emoji:'👀'}};
+const EL_ALL=[
+  {id:'all',l:'전체'},
+  {id:'naver',l:'네이버 시리즈'},{id:'ridi',l:'리디북스'},{id:'kakao',l:'카카오페이지'},
+  {id:'munpia',l:'문피아'},{id:'joara',l:'조아라'},{id:'dirito',l:'디리토'},
+  {id:'genreParent',l:'장르 갈래'},{id:'genre',l:'세부 장르'},{id:'platform',l:'플랫폼'},
+  {id:'status',l:'연재 상태'},{id:'exclusive',l:'독점 여부'},{id:'commerciality',l:'상업성'},
+  {id:'publisher',l:'출판사'},
+  {id:'excl_excl',l:'독점'},{id:'excl_non',l:'비독점'},{id:'excl_pre',l:'선독점'},{id:'excl_open',l:'선공개'},
+  {id:'kw_all',l:'전체 키워드'},{id:'kw_female',l:'여주 키워드'},{id:'kw_male',l:'남주 키워드'},
+  {id:'promo',l:'프로모션'},{id:'ebook',l:'단행본 출간'}
+];
 const EL=[{id:'genre',l:'세부 장르'},{id:'genreParent',l:'장르 갈래'},{id:'platform',l:'플랫폼'},{id:'status',l:'연재 상태'},{id:'exclusive',l:'독점 여부'},{id:'commerciality',l:'상업성'},{id:'publisher',l:'출판사'},{id:'kw_all',l:'전체 키워드'},{id:'kw_female',l:'여주 키워드'},{id:'kw_male',l:'남주 키워드'},{id:'new_ratio',l:'신작/기존'}];
 const EY=[{id:'count',l:'작품 수'},{id:'rating',l:'평균 평점'},{id:'commerciality',l:'평균 상업성'}];
 const PF={
@@ -796,23 +807,80 @@ function openDet(id){const w=W.find(x=>x.id===id);if(!w)return;closeMenus();cons
 
 function buildRngBtns(){
   const sel=document.getElementById('rng-sel');if(!sel)return;
-  const all=[{id:'all',l:'전체'},...Object.keys(PN).map(p=>({id:p,l:PN[p]}))];
-  sel.innerHTML=all.map(r=>`<option value="${r.id}"${spRange===r.id?' selected':''}>${r.l}</option>`).join('');
+  sel.innerHTML=EL_ALL.map(r=>`<option value="${r.id}"${spRange===r.id?' selected':''}>${r.l}</option>`).join('');
 }
 function setSpRangeSel(v){spRange=v;}
 function buildAxChips(){
   const isPie=['pie','doughnut','radar'].includes(spType);
   const xl=document.getElementById('ax-x-lbl');if(xl)xl.textContent=isPie?'🍕 분할 기준':'📌 X축';
   const xsel=document.getElementById('ax-x-sel');
-  if(xsel)xsel.innerHTML=EL.map(e=>`<option value="${e.id}"${spX===e.id?' selected':''}>${e.l}</option>`).join('');
+  if(xsel)xsel.innerHTML=EL_ALL.map(e=>`<option value="${e.id}"${spX===e.id?' selected':''}>${e.l}</option>`).join('');
   const yr=document.getElementById('ax-y-row');if(yr)yr.style.display=isPie?'none':'flex';
   const ysel=document.getElementById('ax-y-sel');
   if(ysel)ysel.innerHTML=EY.map(e=>`<option value="${e.id}"${spY===e.id?' selected':''}>${e.l}</option>`).join('');
 }
 function setSpXSel(v){spX=v;}
 function setSpYSel(v){spY=v;}
-function getRD(){return spRange==='all'?[...W]:W.filter(w=>w.platform===spRange);}
-function compSP(f){if(spX==='kw_all'){const all={};['female','male','work'].forEach(t=>{Object.entries(KS[t]||{}).forEach(([k,v])=>{all[k]=(all[k]||0)+v;});});const sorted=Object.entries(all).sort((a,b)=>b[1]-a[1]).slice(0,20);return{labels:sorted.map(([k])=>k),values:sorted.map(([,v])=>v),colors:sorted.map((_,i)=>PAL[i%PAL.length])};}if(spX==='kw_female'){const all={};Object.entries(KS.female||{}).forEach(([k,v])=>{all[k]=(all[k]||0)+v;});const sorted=Object.entries(all).sort((a,b)=>b[1]-a[1]).slice(0,15);return{labels:sorted.map(([k])=>k),values:sorted.map(([,v])=>v),colors:sorted.map((_,i)=>['#e84393','#f06292','#c2185b','#ad1457','#e91e63'][i%5])};}if(spX==='kw_male'){const all={};Object.entries(KS.male||{}).forEach(([k,v])=>{all[k]=(all[k]||0)+v;});const sorted=Object.entries(all).sort((a,b)=>b[1]-a[1]).slice(0,15);return{labels:sorted.map(([k])=>k),values:sorted.map(([,v])=>v),colors:sorted.map((_,i)=>['#1565c0','#1976d2','#0d47a1','#283593','#3949ab'][i%5])};}if(spX==='new_ratio'){const n=f.filter(w=>w.isNew).length,o=f.length-n;return{labels:['신작','기존'],values:[n,o],colors:['#e84393','#6c5ce7']};}const groups={};f.forEach(w=>{let key;if(spX==='genre')key=w.genreSub||w.genre||'미분류';else if(spX==='genreParent')key=w.genreParent||'기타';else if(spX==='platform')key=PN[w.platform]||w.platform;else if(spX==='status')key=w.status||'미정';else if(spX==='exclusive')key=w.exclusive||'비독점';else if(spX==='commerciality')key=SL[w.commerciality||0]||'미정';else if(spX==='publisher')key=w.publisher?.trim()||'(미입력)';else key='기타';if(!groups[key])groups[key]={count:0,rsum:0,rcnt:0,csum:0,ccnt:0};groups[key].count++;if(w.rating>0){groups[key].rsum+=w.rating;groups[key].rcnt++;}if(w.commerciality>0){groups[key].csum+=w.commerciality;groups[key].ccnt++;}});const sorted=Object.entries(groups).sort((a,b)=>b[1].count-a[1].count).slice(0,12);const labels=sorted.map(([k])=>k);let values;if(spY==='count')values=sorted.map(([,v])=>v.count);else if(spY==='rating')values=sorted.map(([,v])=>v.rcnt?Math.round(v.rsum/v.rcnt*10)/10:0);else values=sorted.map(([,v])=>v.ccnt?Math.round(v.csum/v.ccnt*10)/10:0);let colors;if(spX==='genre')colors=labels.map(g=>gc(g));else if(spX==='genreParent')colors=labels.map(g=>GPC[g]||PAL[0]);else if(spX==='platform'){const rm={};Object.entries(PN).forEach(([k,v])=>{rm[v]=PC[k];});colors=labels.map(l=>rm[l]||PAL[0]);}else colors=labels.map((_,i)=>PAL[i%PAL.length]);return{labels,values,colors};}
+function getRD(){
+  const platIds=['naver','ridi','kakao','munpia','joara','dirito','other'];
+  const exclMap={excl_excl:'독점',excl_non:'비독점',excl_pre:'선독점',excl_open:'선공개'};
+  if(spRange==='all')return[...W];
+  if(platIds.includes(spRange))return W.filter(w=>w.platform===spRange);
+  if(exclMap[spRange])return W.filter(w=>w.exclusive===exclMap[spRange]);
+  if(spRange==='genreParent')return W.filter(w=>w.genreParent);
+  if(spRange==='genre')return W.filter(w=>w.genreSub||w.genre);
+  if(spRange==='platform')return[...W];
+  if(spRange==='status')return[...W];
+  if(spRange==='exclusive')return[...W];
+  if(spRange==='commerciality')return W.filter(w=>w.commerciality>0);
+  if(spRange==='publisher')return W.filter(w=>w.publisher&&w.publisher.trim());
+  if(spRange==='kw_all'||spRange==='kw_female'||spRange==='kw_male')return[...W];
+  if(spRange==='promo')return W.filter(w=>w.promos&&w.promos.length>0);
+  if(spRange==='ebook')return W.filter(w=>w.hasEbook);
+  return[...W];
+}
+function compSP(f){
+  if(spX==='kw_all'){const all={};['female','male','work'].forEach(t=>{Object.entries(KS[t]||{}).forEach(([k,v])=>{all[k]=(all[k]||0)+v;});});const sorted=Object.entries(all).sort((a,b)=>b[1]-a[1]).slice(0,20);return{labels:sorted.map(([k])=>k),values:sorted.map(([,v])=>v),colors:sorted.map((_,i)=>PAL[i%PAL.length])};}
+  if(spX==='kw_female'){const all={};Object.entries(KS.female||{}).forEach(([k,v])=>{all[k]=(all[k]||0)+v;});const sorted=Object.entries(all).sort((a,b)=>b[1]-a[1]).slice(0,15);return{labels:sorted.map(([k])=>k),values:sorted.map(([,v])=>v),colors:sorted.map((_,i)=>['#e84393','#f06292','#c2185b','#ad1457','#e91e63'][i%5])};}
+  if(spX==='kw_male'){const all={};Object.entries(KS.male||{}).forEach(([k,v])=>{all[k]=(all[k]||0)+v;});const sorted=Object.entries(all).sort((a,b)=>b[1]-a[1]).slice(0,15);return{labels:sorted.map(([k])=>k),values:sorted.map(([,v])=>v),colors:sorted.map((_,i)=>['#1565c0','#1976d2','#0d47a1','#283593','#3949ab'][i%5])};}
+  if(spX==='new_ratio'){const n=f.filter(w=>w.isNew).length,o=f.length-n;return{labels:['신작','기존'],values:[n,o],colors:['#e84393','#6c5ce7']};}
+  if(spX==='promo'){const pm=getPM(),pr={};f.forEach(w=>(w.promos||[]).forEach(p=>{pr[p]=(pr[p]||0)+1;}));const sorted=Object.entries(pr).sort((a,b)=>b[1]-a[1]).slice(0,15);return{labels:sorted.map(([k])=>pm[k]||k),values:sorted.map(([,v])=>v),colors:sorted.map((_,i)=>PAL[i%PAL.length])};}
+  if(spX==='ebook'){const y=f.filter(w=>w.hasEbook).length,n=f.length-y;return{labels:['단행본 있음','없음'],values:[y,n],colors:['#00b894','#e4e6f0']};}
+  // 플랫폼 필터를 X축으로 사용하는 경우
+  const platIds=['naver','ridi','kakao','munpia','joara','dirito','other'];
+  if(platIds.includes(spX)){const hit=f.filter(w=>w.platform===spX).length,rest=f.length-hit;return{labels:[PN[spX]||spX,'기타'],values:[hit,rest],colors:[PC[spX]||PAL[0],'#e4e6f0']};}
+  const exclMap={excl_excl:'독점',excl_non:'비독점',excl_pre:'선독점',excl_open:'선공개'};
+  if(exclMap[spX]){const v=exclMap[spX],hit=f.filter(w=>w.exclusive===v).length,rest=f.length-hit;return{labels:[v,'그 외'],values:[hit,rest],colors:[PAL[0],'#e4e6f0']};}
+  const groups={};
+  f.forEach(w=>{
+    let key;
+    if(spX==='genre')key=w.genreSub||w.genre||'미분류';
+    else if(spX==='genreParent')key=w.genreParent||'기타';
+    else if(spX==='platform')key=PN[w.platform]||w.platform;
+    else if(spX==='status')key=w.status||'미정';
+    else if(spX==='exclusive')key=w.exclusive||'비독점';
+    else if(spX==='commerciality')key=SL[w.commerciality||0]||'미정';
+    else if(spX==='publisher')key=w.publisher?.trim()||'(미입력)';
+    else if(spX==='all')key='전체';
+    else key='기타';
+    if(!groups[key])groups[key]={count:0,rsum:0,rcnt:0,csum:0,ccnt:0};
+    groups[key].count++;
+    if(w.rating>0){groups[key].rsum+=w.rating;groups[key].rcnt++;}
+    if(w.commerciality>0){groups[key].csum+=w.commerciality;groups[key].ccnt++;}
+  });
+  const sorted=Object.entries(groups).sort((a,b)=>b[1].count-a[1].count).slice(0,12);
+  const labels=sorted.map(([k])=>k);
+  let values;
+  if(spY==='count')values=sorted.map(([,v])=>v.count);
+  else if(spY==='rating')values=sorted.map(([,v])=>v.rcnt?Math.round(v.rsum/v.rcnt*10)/10:0);
+  else values=sorted.map(([,v])=>v.ccnt?Math.round(v.csum/v.ccnt*10)/10:0);
+  let colors;
+  if(spX==='genre')colors=labels.map(g=>gc(g));
+  else if(spX==='genreParent')colors=labels.map(g=>GPC[g]||PAL[0]);
+  else if(spX==='platform'){const rm={};Object.entries(PN).forEach(([k,v])=>{rm[v]=PC[k];});colors=labels.map(l=>rm[l]||PAL[0]);}
+  else colors=labels.map((_,i)=>PAL[i%PAL.length]);
+  return{labels,values,colors};
+}
 function generateChart(){const f=getRD();const{labels,values,colors}=compSP(f);const rl=spRange==='all'?'전체':PN[spRange]||spRange;document.getElementById('sptitle').textContent=`${getFlbl(spX)} × ${getYlbl(spY)}`;document.getElementById('spsub').textContent=`범위: ${rl} · ${f.length}편`;const isTable=spType==='table';document.getElementById('sp-chart-area').style.display=isTable?'none':'block';document.getElementById('sp-tbl-area').style.display=isTable?'block':'none';if(isTable){buildSPT(labels,values,colors);return;}if(spCh)spCh.destroy();const ctx=document.getElementById('spch')?.getContext('2d');if(!ctx)return;const isPie=['pie','doughnut'].includes(spType),isRadar=spType==='radar';let cd,opts;if(isPie||isRadar){cd={labels,datasets:[{data:values,backgroundColor:colors,borderColor:'#fff',borderWidth:2,hoverOffset:6}]};opts={responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,position:'right',labels:{font:{size:11},boxWidth:12}}}};}else{cd={labels,datasets:[{label:getYlbl(spY),data:values,backgroundColor:colors,borderColor:spType==='line'?'#6c5ce7':undefined,borderWidth:spType==='line'?2.5:0,fill:false,tension:.3,pointBackgroundColor:'#6c5ce7',borderRadius:spType==='bar'?6:0,borderSkipped:false}]};const isH=spType==='bar'&&labels.length>6;opts={indexAxis:isH?'y':undefined,responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#8888aa',font:{size:10}},grid:{color:'#f0f1f7'}},y:{ticks:{color:'#8888aa',font:{size:10},stepSize:1},grid:{color:'#f0f1f7'},beginAtZero:true}}};}spCh=new Chart(ctx,{type:isRadar?'radar':spType,data:cd,options:opts});}
 function buildSPT(labels,values,colors){const total=values.reduce((a,b)=>a+b,0)||1;const mx=Math.max(...values,1);let h=`<thead><tr><th>${getFlbl(spX)}</th><th>${getYlbl(spY)}</th><th>비율</th><th>분포</th></tr></thead><tbody>`;labels.forEach((l,i)=>{const pct=Math.round(values[i]/total*100);h+=`<tr><td style="font-weight:700">${l}</td><td class="nr">${values[i]}</td><td class="pc">${pct}%</td><td><div style="height:6px;border-radius:3px;width:${Math.round(values[i]/mx*100)}px;background:${colors[i]};display:inline-block"></div></td></tr>`;});h+=`<tr class="sumr"><td>합계</td><td class="nr">${total}</td><td class="pc">100%</td><td></td></tr></tbody>`;document.getElementById('sptbl').innerHTML=h;}
 function getFlbl(f){return{genre:'세부 장르',genreParent:'장르 갈래',platform:'플랫폼',status:'연재 상태',exclusive:'독점 여부',commerciality:'상업성',publisher:'출판사',kw_all:'전체 키워드',new_ratio:'신작/기존',kw_female:'여주 키워드',kw_male:'남주 키워드'}[f]||f;}

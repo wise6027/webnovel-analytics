@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>표지 마이그레이션</title>
+<style>
+body{font-family:sans-serif;padding:30px;background:#f7f8fc;color:#1a1a2e}
+h1{font-size:20px;margin-bottom:20px}
+#log{background:#fff;border:1px solid #e4e6f0;border-radius:12px;padding:16px;height:400px;overflow-y:auto;font-size:12px;font-family:monospace;margin-bottom:16px}
+.ok{color:#00b894}.err{color:#e53935}.info{color:#6c5ce7}.warn{color:#f59e0b}
+button{background:#6c5ce7;color:#fff;border:none;padding:10px 24px;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;margin-right:8px}
+button:disabled{opacity:.5;cursor:not-allowed}
+#progress{margin-bottom:12px;font-size:13px;font-weight:600;color:#6c5ce7}
+</style>
+</head>
+<body>
+<h1>📦 표지 이미지 Storage 마이그레이션</h1>
+<div id="progress">준비 중...</div>
+<div id="log"></div>
+<button id="btn" onclick="startMigration()">▶ 마이그레이션 시작</button>
+<button id="btnCheck" onclick="checkResults()">🔍 결과 확인</button>
+
+<script>
+const SB_URL='https://ytvhcwsbiralnbfmudbz.supabase.co';
+const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl0dmhjd3NiaXJhbG5iZm11ZGJ6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc4Njg0MjAsImV4cCI6MjA5MzQ0NDQyMH0.ghTgf4vHY0cFGu0G76Dm_mdSlavw8yJo8RCs6bycT7Y';
+const SB_H={'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY};
+
+function log(msg,cls=''){
+  const el=document.getElementById('log');
+  el.innerHTML+=`<div class="${cls}">${new Date().toLocaleTimeString()} — ${msg}</div>`;
+  el.scrollTop=el.scrollHeight;
+}
+function setProgress(msg){document.getElementById('progress').textContent=msg;}
+
+// base64를 Blob으로 변환
+function b64toBlob(b64){
+  const parts=b64.split(',');
+  const mime=parts[0].match(/:(.*?);/)[1];
+  const binary=atob(parts[1]);
+  const arr=new Uint8Array(binary.length);
+  for(let i=0;i<binary.length;i++)arr[i]=binary.charCodeAt(i);
+  return new Blob([arr],{type:mime});
+}
+
+async function startMigration(){
+  document.getElementById('btn').disabled=true;
+  log('마이그레이션 시작...','info');
+
+  // 1. work_covers 전체 로드 (50개씩 페이지네이션)
+  let allCovers=[];
+  let offset=0;
+  const limit=50;
+
+  while(true){
+    log(`work_covers 로드 중... (${offset}~${offset+limit})`, 'info');
+    const r=await fetch(
+      `${SB_URL}/rest/v1/work_covers?select=work_id,cover_base64&limit=${limit}&offset=${offset}`,
+      {headers:SB_H}
+    );
+    if(!r.ok){log('❌ work_covers 로드 실패: '+await r.text(),'err');break;}
+    const data=await r.json();
+    if(!data.length)break;
+    allCovers=[...allCovers,...data];
+    log(`✅ ${allCovers.length}개 로드됨`,'ok');
+    if(data.length<limit)break;
+    offset+=limit;
+  }
+
+  log(`총 ${allCovers.length}개 이미지 발견`,'info');
+
+  // 2. 하나씩 Storage 업로드
+  let success=0,fail=0,skip=0;
+
+  for(let i=0;i<allCovers.length;i++){
+    const {work_id,cover_base64}=allCovers[i];
+    setProgress(`진행 중: ${i+1} / ${allCovers.length} (성공 ${success}, 실패 ${fail})`);
+
+    if(!cover_base64){
+      log(`⚠️ work_id ${work_id} — 이미지 없음, 스킵`,'warn');
+      skip++;
+      continue;
+    }
+
+    try{
+      // base64 → Blob 변환
+      const blob=b64toBlob(cover_base64);
+      const ext=blob.type.includes('png')?'png':'jpg';
+      const path=`${work_id}.${ext}`;
+
+      // Storage 업로드
+      const uploadR=await fetch(
+        `${SB_URL}/storage/v1/object/covers/${path}`,
+        {method:'POST',headers:{...SB_H,'Content-Type':blob.type,'x-upsert':'true'},body:blob}
+      );
+
+      if(!uploadR.ok){
+        const err=await uploadR.text();
+        log(`❌ work_id ${work_id} 업로드 실패: ${err}`,'err');
+        fail++;
+        continue;
+      }
+
+      // Public URL 생성
+      const publicUrl=`${SB_URL}/storage/v1/object/public/covers/${path}`;
+
+      // works 테이블에 cover_url 업데이트
+      const updateR=await fetch(
+        `${SB_URL}/rest/v1/works?id=eq.${work_id}`,
+        {method:'PATCH',headers:{...SB_H,'Content-Type':'application/json','Prefer':'return=minimal'},
+         body:JSON.stringify({cover_url:publicUrl,has_cover:true})}
+      );
+
+      if(!updateR.ok){
+        log(`⚠️ work_id ${work_id} URL 저장 실패`,'warn');
+        fail++;
+        continue;
+      }
+
+      log(`✅ work_id ${work_id} 완료 → ${publicUrl}`,'ok');
+      success++;
+
+    }catch(e){
+      log(`❌ work_id ${work_id} 오류: ${e.message}`,'err');
+      fail++;
+    }
+
+    // 서버 부하 방지 (100ms 간격)
+    await new Promise(r=>setTimeout(r,100));
+  }
+
+  setProgress(`✅ 완료! 성공 ${success}개 / 실패 ${fail}개 / 스킵 ${skip}개`);
+  log(`\n===== 마이그레이션 완료 =====`,'info');
+  log(`성공: ${success}개`,'ok');
+  log(`실패: ${fail}개`,fail>0?'err':'ok');
+  log(`스킵: ${skip}개`,'warn');
+  document.getElementById('btn').disabled=false;
+}
+
+async function checkResults(){
+  log('결과 확인 중...','info');
+  const r=await fetch(
+    `${SB_URL}/rest/v1/works?select=id,title,cover_url&cover_url=not.is.null&limit=10`,
+    {headers:SB_H}
+  );
+  if(!r.ok){log('확인 실패: '+await r.text(),'err');return;}
+  const data=await r.json();
+  log(`cover_url 저장된 작품 샘플 (최대 10개):`,'info');
+  data.forEach(w=>log(`✅ [${w.id}] ${w.title} → ${w.cover_url}`,'ok'));
+  if(!data.length)log('아직 저장된 URL이 없어요','warn');
+}
+</script>
+</body>
+</html>

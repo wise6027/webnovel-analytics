@@ -578,17 +578,7 @@ async function loadAll(){
     setDB(true,'✅ Supabase 연결됨 · 작품 '+W.length+'편');
     render(); // 이미지 없이 먼저 화면 표시
 
-    // 2. 이미지는 백그라운드에서 조용히 로드
-    txt.textContent='✅ Supabase 연결됨 · 작품 '+W.length+'편 (표지 로드 중...)';
-    const ids=W.map(w=>w.id);
-    const coverMap=await loadAllCovers(ids);
-    let updated=false;
-    W.forEach(w=>{if(coverMap[w.id]){w.coverBase64=coverMap[w.id];updated=true;}});
-    if(updated){
-      setDB(true,'✅ Supabase 연결됨 · 작품 '+W.length+'편');
-      if(curPage==='cov')renderCovers();
-      else render();
-    }
+    setDB(true,'✅ Supabase 연결됨 · 작품 '+W.length+'편');
   }catch(e){
     setDB(false,'❌ 연결 실패: '+e.message);
     console.error(e);
